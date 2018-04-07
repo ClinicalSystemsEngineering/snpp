@@ -46,10 +46,13 @@ Init:
 				log.Printf("Message pulled from queue:%v", msg)
 
 				//initiate page
+				log.Printf("sending page to snpp server for pin:%v\n", pin)
 				snpp.Write([]byte("PAGE " + pin + "\r"))
 
 				//read response from page initiate
+				log.Println("Reading snpp server response")
 				response, err = r.ReadString('\r')
+				log.Printf("Response:%v", response)
 				if err != nil {
 					log.Printf("Error reading response from SNPP server: %v\n", err.Error())
 					log.Println("Closing connection and starting new connection.")
@@ -62,8 +65,11 @@ Init:
 					log.Printf("SNPP Server did not accept pager id. response was: %v\n", response)
 					log.Printf("THROWING OUT MSG: %v\n", msg)
 				} else {
+					log.Printf("sending mess to snpp server")
 					snpp.Write([]byte("MESS " + text + "\r"))
+					log.Println("Reading snpp server response")
 					response, err = r.ReadString('\r')
+					log.Printf("Response:%v", response)
 					if err != nil {
 						log.Printf("Error reading response from SNPP server: %v\n", err.Error())
 						log.Println("Closing connection and starting new connection.")
@@ -78,8 +84,11 @@ Init:
 						msgchan <- msg
 						log.Printf("REQUEUED MSG: %v\n", msg)
 					} else {
+						log.Printf("sending send to snpp server")
 						snpp.Write([]byte("SEND\r"))
+						log.Println("Reading snpp server response")
 						response, err = r.ReadString('\r')
+						log.Printf("Response:%v", response)
 						if err != nil {
 							log.Printf("Error reading response from SNPP server: %v\n", err.Error())
 							log.Println("Closing connection and starting new connection.")
