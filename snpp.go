@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 )
 
 //snpp level 1 client
@@ -35,65 +36,72 @@ Init:
 	log.Println("SNPP server ready")
 	//start sending messages
 	for {
+		select {
+		case msg, ok := <-msgchan:
+			if ok {
+				//parse message from channel
 
-		//parse message from channel
-		msg := <-msgchan
-		splitmsg := strings.Split(msg, ";")
-		pin, text := splitmsg[0], splitmsg[1]
+				splitmsg := strings.Split(msg, ";")
+				pin, text := splitmsg[0], splitmsg[1]
+				log.Printf("Message pulled from queue:%v", msg)
 
-		//initiate page
-		snpp.Write([]byte("PAGE " + pin + "\r"))
+				//initiate page
+				snpp.Write([]byte("PAGE " + pin + "\r"))
 
-		//read response from page initiate
-		response, err = r.ReadString('\r')
-		if err != nil {
-			log.Printf("Error reading response from SNPP server: %v\n", err.Error())
-			log.Println("Closing connection and starting new connection.")
-			snpp.Close()
-			msgchan <- msg
-			goto Init
-		}
-		//if page not accepted move on and throw out the message
-		if !strings.Contains(response, "250") {
-			log.Printf("SNPP Server did not accept pager id. response was: %v\n", response)
-			log.Printf("THROWING OUT MSG: %v\n", msg)
-		} else {
-			snpp.Write([]byte("MESS " + text + "\r"))
-			response, err = r.ReadString('\r')
-			if err != nil {
-				log.Printf("Error reading response from SNPP server: %v\n", err.Error())
-				log.Println("Closing connection and starting new connection.")
-				snpp.Close()
-				msgchan <- msg
-				log.Printf("REQUEUED MSG: %v\n", msg)
-				goto Init
-			}
-
-			if !strings.Contains(response, "250") {
-				log.Printf("SNPP Server did not accept message. response was: %v\n", response)
-				msgchan <- msg
-				log.Printf("REQUEUED MSG: %v\n", msg)
-			} else {
-				snpp.Write([]byte("SEND\r"))
+				//read response from page initiate
 				response, err = r.ReadString('\r')
 				if err != nil {
 					log.Printf("Error reading response from SNPP server: %v\n", err.Error())
 					log.Println("Closing connection and starting new connection.")
 					snpp.Close()
 					msgchan <- msg
-					log.Printf("REQUEUED MSG: %v\n", msg)
 					goto Init
 				}
+				//if page not accepted move on and throw out the message
 				if !strings.Contains(response, "250") {
-					log.Printf("SNPP Server did not send message. response was: %v\n", response)
-					msgchan <- msg
-					log.Printf("REQUEUED MSG: %v\n", msg)
-
+					log.Printf("SNPP Server did not accept pager id. response was: %v\n", response)
+					log.Printf("THROWING OUT MSG: %v\n", msg)
 				} else {
-					log.Printf("<%v> Sent to SNPP Server", msg)
+					snpp.Write([]byte("MESS " + text + "\r"))
+					response, err = r.ReadString('\r')
+					if err != nil {
+						log.Printf("Error reading response from SNPP server: %v\n", err.Error())
+						log.Println("Closing connection and starting new connection.")
+						snpp.Close()
+						msgchan <- msg
+						log.Printf("REQUEUED MSG: %v\n", msg)
+						goto Init
+					}
+
+					if !strings.Contains(response, "250") {
+						log.Printf("SNPP Server did not accept message. response was: %v\n", response)
+						msgchan <- msg
+						log.Printf("REQUEUED MSG: %v\n", msg)
+					} else {
+						snpp.Write([]byte("SEND\r"))
+						response, err = r.ReadString('\r')
+						if err != nil {
+							log.Printf("Error reading response from SNPP server: %v\n", err.Error())
+							log.Println("Closing connection and starting new connection.")
+							snpp.Close()
+							msgchan <- msg
+							log.Printf("REQUEUED MSG: %v\n", msg)
+							goto Init
+						}
+						if !strings.Contains(response, "250") {
+							log.Printf("SNPP Server did not send message. response was: %v\n", response)
+							msgchan <- msg
+							log.Printf("REQUEUED MSG: %v\n", msg)
+
+						} else {
+							log.Printf("<%v> Sent to SNPP Server", msg)
+						}
+					}
 				}
 			}
-
+		default:
+			log.Println("No msgs to process sleeping for 5 seconds")
+			time.Sleep(5 * time.Second)
 		}
 	}
 }
