@@ -8,10 +8,14 @@ import (
 	"time"
 )
 
-//snpp level 1 client
+//Client is a simple implementation of an snpp level 1 client
 func Client(msgchan chan string, addr string) {
-	log.Printf("Connecting SNPP Client to %v...\n\n", addr)
+	log.Println("Started SNPP Client")
+
+	timeoutDuration := 5 * time.Second
+
 Init:
+	log.Printf("Connecting SNPP Client to %v...\n\n", addr)
 	//dial server
 	snpp, err := net.Dial("tcp", addr)
 	if err != nil {
@@ -21,6 +25,7 @@ Init:
 	r := bufio.NewReader(snpp)
 
 	//server connection init
+	snpp.SetReadDeadline(time.Now().Add(timeoutDuration))
 	response, err := r.ReadString('\n')
 	if err != nil {
 		log.Printf("Error reading response from SNPP server: %v\n", err.Error())
@@ -47,10 +52,18 @@ Init:
 
 				//initiate page
 				log.Printf("sending page to snpp server for pin:%v\n", pin)
-				snpp.Write([]byte("PAGE " + pin + "\r\n"))
-
+				snpp.SetWriteDeadline(time.Now().Add(timeoutDuration))
+				_, err = snpp.Write([]byte("PAGE " + pin + "\r\n"))
+				if err != nil {
+					log.Println("Error writing PAGE to snpp server")
+					log.Println("Closing connection and starting new connection.")
+					snpp.Close()
+					msgchan <- msg
+					goto Init
+				}
 				//read response from page initiate
 				log.Println("Reading snpp server response")
+				snpp.SetReadDeadline(time.Now().Add(timeoutDuration))
 				response, err = r.ReadString('\n')
 				log.Printf("Response:%v", response)
 				if err != nil {
@@ -66,8 +79,18 @@ Init:
 					log.Printf("THROWING OUT MSG: %v\n", msg)
 				} else {
 					log.Printf("sending mess to snpp server")
-					snpp.Write([]byte("MESS " + text + "\r\n"))
+					snpp.SetWriteDeadline(time.Now().Add(timeoutDuration))
+					_, err = snpp.Write([]byte("MESS " + text + "\r\n"))
+					if err != nil {
+						log.Println("Error writing MESS to snpp server")
+						log.Println("Closing connection and starting new connection.")
+						snpp.Close()
+						msgchan <- msg
+						goto Init
+					}
+
 					log.Println("Reading snpp server response")
+					snpp.SetReadDeadline(time.Now().Add(timeoutDuration))
 					response, err = r.ReadString('\n')
 					log.Printf("Response:%v", response)
 					if err != nil {
@@ -85,8 +108,18 @@ Init:
 						log.Printf("REQUEUED MSG: %v\n", msg)
 					} else {
 						log.Printf("sending send to snpp server")
+						snpp.SetWriteDeadline(time.Now().Add(timeoutDuration))
 						snpp.Write([]byte("SEND\r\n"))
+						if err != nil {
+							log.Println("Error writing SEND to snpp server")
+							log.Println("Closing connection and starting new connection.")
+							snpp.Close()
+							msgchan <- msg
+							goto Init
+						}
+
 						log.Println("Reading snpp server response")
+						snpp.SetReadDeadline(time.Now().Add(timeoutDuration))
 						response, err = r.ReadString('\n')
 						log.Printf("Response:%v", response)
 						if err != nil {
