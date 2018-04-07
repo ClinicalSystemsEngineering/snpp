@@ -9,7 +9,7 @@ import (
 
 //snpp level 1 client
 func Client(msgchan chan string, addr string) {
-
+	log.Printf("Connecting SNPP Client to %v...\n\n", addr)
 Init:
 	//dial server
 	snpp, err := net.Dial("tcp", addr)
