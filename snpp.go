@@ -21,7 +21,7 @@ Init:
 	r := bufio.NewReader(snpp)
 
 	//server connection init
-	response, err := r.ReadString('\r')
+	response, err := r.ReadString('\n')
 	if err != nil {
 		log.Printf("Error reading response from SNPP server: %v\n", err.Error())
 		log.Println("Closing connection and starting new connection.")
@@ -47,11 +47,11 @@ Init:
 
 				//initiate page
 				log.Printf("sending page to snpp server for pin:%v\n", pin)
-				snpp.Write([]byte("PAGE " + pin + "\r"))
+				snpp.Write([]byte("PAGE " + pin + "\r\n"))
 
 				//read response from page initiate
 				log.Println("Reading snpp server response")
-				response, err = r.ReadString('\r')
+				response, err = r.ReadString('\n')
 				log.Printf("Response:%v", response)
 				if err != nil {
 					log.Printf("Error reading response from SNPP server: %v\n", err.Error())
@@ -66,9 +66,9 @@ Init:
 					log.Printf("THROWING OUT MSG: %v\n", msg)
 				} else {
 					log.Printf("sending mess to snpp server")
-					snpp.Write([]byte("MESS " + text + "\r"))
+					snpp.Write([]byte("MESS " + text + "\r\n"))
 					log.Println("Reading snpp server response")
-					response, err = r.ReadString('\r')
+					response, err = r.ReadString('\n')
 					log.Printf("Response:%v", response)
 					if err != nil {
 						log.Printf("Error reading response from SNPP server: %v\n", err.Error())
@@ -85,9 +85,9 @@ Init:
 						log.Printf("REQUEUED MSG: %v\n", msg)
 					} else {
 						log.Printf("sending send to snpp server")
-						snpp.Write([]byte("SEND\r"))
+						snpp.Write([]byte("SEND\r\n"))
 						log.Println("Reading snpp server response")
-						response, err = r.ReadString('\r')
+						response, err = r.ReadString('\n')
 						log.Printf("Response:%v", response)
 						if err != nil {
 							log.Printf("Error reading response from SNPP server: %v\n", err.Error())
