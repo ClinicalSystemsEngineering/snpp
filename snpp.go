@@ -32,7 +32,7 @@ Init:
 		snpp.Close()
 		goto Init
 	}
-
+	log.Println("SNPP server ready")
 	//start sending messages
 	for {
 
@@ -89,6 +89,8 @@ Init:
 					msgchan <- msg
 					log.Printf("REQUEUED MSG: %v\n", msg)
 
+				} else {
+					log.Printf("<%v> Sent to SNPP Server", msg)
 				}
 			}
 
